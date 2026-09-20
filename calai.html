@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>КалоріЇ — сканер їжі</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,ital@9..144,300..700,0..1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F2F4EF;
+    --surface: #FFFFFF;
+    --surface-alt: #E7EBE2;
+    --ink: #1C2620;
+    --ink-muted: #6B756A;
+    --primary: #2F5D50;
+    --primary-ink: #FFFFFF;
+    --accent: #E8A33D;
+    --accent-soft: #F6DFB4;
+    --carb: #4C7A9E;
+    --carb-soft: #D7E5EF;
+    --fat: #B5674D;
+    --fat-soft: #F1DDD3;
+    --danger: #B5473A;
+    --border: rgba(28,38,32,0.12);
+    --shadow: none;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121613;
+      --surface: #1B211D;
+      --surface-alt: #222923;
+      --ink: #ECEFE9;
+      --ink-muted: #96A092;
+      --primary: #7FC7AE;
+      --primary-ink: #0E1512;
+      --accent: #F2B65A;
+      --accent-soft: #3A2F17;
+      --carb: #7FB0D6;
+      --carb-soft: #22303A;
+      --fat: #D89178;
+      --fat-soft: #3A2A22;
+      --danger: #E08578;
+      --border: rgba(236,239,233,0.14);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121613;
+    --surface: #1B211D;
+    --surface-alt: #222923;
+    --ink: #ECEFE9;
+    --ink-muted: #96A092;
+    --primary: #7FC7AE;
+    --primary-ink: #0E1512;
+    --accent: #F2B65A;
+    --accent-soft: #3A2F17;
+    --carb: #7FB0D6;
+    --carb-soft: #22303A;
+    --fat: #D89178;
+    --fat-soft: #3A2A22;
+    --danger: #E08578;
+    --border: rgba(236,239,233,0.14);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  h1, h2, h3, .display {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    margin: 0;
+  }
+  button { font-family: inherit; }
+  #app { max-width: 480px; margin: 0 auto; min-height: 100%; position: relative; padding-bottom: 40px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 6px;
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    background: var(--bg);
+  }
+  .topbar .wordmark { font-family:'Fraunces', serif; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .topbar .wordmark span { color: var(--primary); }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--ink); cursor: pointer;
+  }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* ---------- day strip ---------- */
+  .day-strip { display: flex; gap: 8px; padding: 10px 20px 4px; overflow-x: auto; }
+  .day-chip {
+    flex: 0 0 auto; width: 46px; padding: 8px 0 9px;
+    border-radius: 14px; border: 1px solid var(--border);
+    background: var(--surface); text-align: center; cursor: pointer;
+  }
+  .day-chip .dow { font-size: 11px; color: var(--ink-muted); text-transform: lowercase; }
+  .day-chip .num { font-size: 16px; font-weight: 600; margin-top: 2px; }
+  .day-chip.active { background: var(--primary); border-color: var(--primary); }
+  .day-chip.active .dow, .day-chip.active .num { color: var(--primary-ink); }
+
+  /* ---------- sections ---------- */
+  .section { padding: 14px 20px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 20px;
+  }
+
+  /* ---------- calorie ring card ---------- */
+  .budget-card { display: flex; align-items: center; gap: 18px; }
+  .budget-labels { flex: 1; }
+  .budget-labels .eyebrow { font-size: 13px; color: var(--ink-muted); margin-bottom: 2px; }
+  .budget-labels .row { display:flex; justify-content:space-between; margin-top:10px; }
+  .budget-labels .stat { }
+  .budget-labels .stat .n { font-family:'Fraunces', serif; font-size: 20px; font-weight: 500; display:block; }
+  .budget-labels .stat .l { font-size: 11.5px; color: var(--ink-muted); }
+  .ring-wrap { position: relative; width: 118px; height: 118px; flex: 0 0 auto; }
+  .ring-wrap .mid { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .ring-wrap .mid .n { font-family:'Fraunces', serif; font-size: 26px; font-weight: 500; line-height: 1; }
+  .ring-wrap .mid .l { font-size: 10.5px; color: var(--ink-muted); margin-top: 3px; text-align:center; }
+
+  /* ---------- macros ---------- */
+  .macro-grid { display:flex; gap: 10px; margin-top: 12px; }
+  .macro-card {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 12px 14px;
+  }
+  .macro-card .name { font-size: 12px; color: var(--ink-muted); display:flex; align-items:center; gap:6px; }
+  .macro-card .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .macro-card .val { font-family:'Fraunces', serif; font-size: 18px; margin-top: 6px; }
+  .bar-track { height: 5px; border-radius: 3px; background: var(--surface-alt); margin-top: 8px; overflow:hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+
+  /* ---------- meal list ---------- */
+  .list-head { display:flex; justify-content:space-between; align-items:baseline; margin: 22px 0 10px; }
+  .list-head h2 { font-size: 18px; }
+  .list-head .count { font-size: 12.5px; color: var(--ink-muted); }
+  .meal-row {
+    display:flex; align-items:center; gap: 12px;
+    padding: 12px 4px; border-bottom: 1px solid var(--border);
+  }
+  .meal-row:last-child { border-bottom: none; }
+  .meal-bar { width: 4px; align-self: stretch; border-radius: 3px; background: var(--primary); min-height: 34px; }
+  .meal-info { flex: 1; min-width: 0; }
+  .meal-info .name { font-size: 14.5px; font-weight: 500; }
+  .meal-info .meta { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+  .meal-kcal { font-family:'Fraunces', serif; font-size: 16px; white-space: nowrap; }
+  .meal-del { border: none; background: none; color: var(--ink-muted); cursor: pointer; padding: 6px; }
+  .empty-state {
+    text-align: center; padding: 30px 10px; color: var(--ink-muted); font-size: 13.5px;
+  }
+
+  /* ---------- fab ---------- */
+  .fab-wrap { position: sticky; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display:flex; justify-content:center; padding-top: 10px; pointer-events:none; }
+  .fab {
+    pointer-events:auto;
+    display:flex; align-items:center; gap:10px;
+    background: var(--primary); color: var(--primary-ink);
+    border: none; border-radius: 30px; padding: 14px 22px;
+    font-size: 14.5px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+  }
+  .fab svg { width: 19px; height: 19px; }
+
+  /* ---------- onboarding ---------- */
+  .onb-wrap { min-height: 100vh; min-height: 100dvh; display:flex; flex-direction:column; padding: 26px 24px; }
+  .onb-progress { display:flex; gap:6px; margin-bottom: 26px; }
+  .onb-progress i { flex:1; height:3px; border-radius:2px; background: var(--surface-alt); }
+  .onb-progress i.done { background: var(--primary); }
+  .onb-step h1 { font-size: 26px; line-height: 1.25; margin-bottom: 6px; }
+  .onb-step p.sub { color: var(--ink-muted); font-size: 14px; margin: 0 0 24px; }
+  .field { margin-bottom: 16px; }
+  .field label { display:block; font-size: 12.5px; color: var(--ink-muted); margin-bottom: 6px; }
+  .field input[type=number], .field input[type=text] {
+    width: 100%; padding: 13px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--ink); font-size: 15px; font-family: inherit;
+  }
+  .seg { display:flex; gap:8px; flex-wrap: wrap; }
+  .seg button {
+    flex: 1 1 auto; padding: 12px 10px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--ink); font-size: 13.5px; cursor: pointer; text-align:left;
+  }
+  .seg button.sel { border-color: var(--primary); background: var(--primary); color: var(--primary-ink); }
+  .seg.col button { flex-basis: 100%; }
+  .seg button .t { font-weight: 600; display:block; }
+  .seg button .d { font-size: 11.5px; opacity: 0.75; margin-top: 2px; display:block; }
+  .onb-nav { margin-top: auto; display:flex; gap: 10px; padding-top: 20px; }
+  .btn-primary {
+    flex:1; background: var(--primary); color: var(--primary-ink); border:none;
+    border-radius: 14px; padding: 15px; font-size: 15px; font-weight: 600; cursor:pointer;
+  }
+  .btn-primary:disabled { opacity: 0.4; cursor: default; }
+  .btn-ghost {
+    background: none; border: 1px solid var(--border); color: var(--ink);
+    border-radius: 14px; padding: 15px 18px; font-size: 15px; cursor:pointer;
+  }
+  .result-card { background: var(--accent-soft); border-radius: 18px; padding: 20px; margin-top: 6px; }
+  .result-card .n { font-family:'Fraunces', serif; font-size: 40px; font-weight: 500; }
+  .result-card .l { font-size: 13px; color: var(--ink-muted); margin-top: 2px; }
+  .result-macros { display:flex; gap: 14px; margin-top: 16px; }
+  .result-macros div { flex:1; }
+  .result-macros .v { font-weight: 600; font-size: 15px; }
+  .result-macros .k { font-size: 11.5px; color: var(--ink-muted); }
+
+  /* ---------- modal / sheet ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,14,11,0.45);
+    display:flex; align-items:flex-end; justify-content:center; z-index: 50;
+  }
+  .overlay.hidden { display:none; }
+  .sheet {
+    background: var(--bg); width: 100%; max-width: 480px;
+    border-radius: 24px 24px 0 0; padding: 22px 22px calc(22px + env(safe-area-inset-bottom, 0px));
+    max-height: 88vh; overflow-y: auto;
+  }
+  .sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 16px; }
+  .sheet h2 { font-size: 19px; margin-bottom: 4px; }
+  .sheet .sub { color: var(--ink-muted); font-size: 13px; margin-bottom: 18px; }
+  .scan-choice { display:flex; flex-direction:column; gap: 10px; }
+  .scan-choice label, .scan-choice button {
+    display:flex; align-items:center; gap: 12px; padding: 15px 16px;
+    border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
+    cursor:pointer; font-size: 14.5px; color: var(--ink); font-weight: 500;
+  }
+  .scan-choice .ic {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--accent-soft);
+    display:flex; align-items:center; justify-content:center; flex: 0 0 auto;
+  }
+  .scan-choice .ic svg { width: 18px; height: 18px; color: var(--accent); }
+  .scan-choice input[type=file] { display:none; }
+  .scan-status { text-align:center; padding: 30px 10px; }
+  .spinner {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid var(--surface-alt); border-top-color: var(--primary);
+    margin: 0 auto 14px; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scan-status .msg { font-size: 14px; color: var(--ink-muted); }
+  .scan-results { display:flex; flex-direction:column; gap: 8px; margin: 4px 0 16px; }
+  .scan-item {
+    display:flex; align-items:center; gap: 10px; padding: 11px 12px;
+    border: 1px solid var(--border); border-radius: 12px;
+  }
+  .scan-item input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--primary); }
+  .scan-item .info { flex:1; }
+  .scan-item .n { font-size: 14px; font-weight: 500; }
+  .scan-item .m { font-size: 11.5px; color: var(--ink-muted); }
+  .scan-item .k { font-family:'Fraunces', serif; font-size: 15px; }
+  .err-box { background: var(--fat-soft); color: var(--fat); border-radius: 12px; padding: 13px 14px; font-size: 13.5px; margin-bottom: 14px; }
+  .sheet-actions { display:flex; gap: 10px; margin-top: 6px; }
+  .link-btn { background:none; border:none; color: var(--primary); font-size: 13.5px; font-weight: 600; cursor:pointer; padding: 8px 0; }
+
+  ::-webkit-scrollbar { display:none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var LS_PROFILE = "calai_profile_v1";
+  var LS_LOG = "calai_log_v1";
+
+  var DOW = ["нд","пн","вт","ср","чт","пт","сб"];
+  var ACTIVITY = [
+    {id:"low", mult:1.2, t:"Малорухливий спосіб життя", d:"Сидяча робота, мало руху"},
+    {id:"light", mult:1.375, t:"Легка активність", d:"Тренування 1–3 рази на тиждень"},
+    {id:"moderate", mult:1.55, t:"Помірна активність", d:"Тренування 3–5 разів на тиждень"},
+    {id:"high", mult:1.725, t:"Висока активність", d:"Тренування 6–7 разів на тиждень"},
+    {id:"veryhigh", mult:1.9, t:"Дуже висока активність", d:"Фізична робота або 2 тренування на день"}
+  ];
+  var GOALS = [
+    {id:"lose", delta:-500, t:"Схуднення", d:"Дефіцит ~500 ккал на день"},
+    {id:"maintain", delta:0, t:"Підтримка ваги", d:"Без зміни калорійності"},
+    {id:"gain", delta:300, t:"Набір маси", d:"Надлишок ~300 ккал на день"}
+  ];
+
+  function loadProfile(){ try { return JSON.parse(localStorage.getItem(LS_PROFILE)); } catch(e){ return null; } }
+  function saveProfile(p){ try { localStorage.setItem(LS_PROFILE, JSON.stringify(p)); } catch(e){} }
+  function loadLog(){ try { return JSON.parse(localStorage.getItem(LS_LOG)) || {}; } catch(e){ return {}; } }
+  function saveLog(l){ try { localStorage.setItem(LS_LOG, JSON.stringify(l)); } catch(e){} }
+  function todayKey(){ return dateKey(new Date()); }
+  function dateKey(d){
+    var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+    return y+"-"+m+"-"+day;
+  }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+  function esc(s){ var d=document.createElement("div"); d.textContent = s==null?"":String(s); return d.innerHTML; }
+  function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+
+  function calcTarget(p){
+    var bmr;
+    if(p.gender === "female"){
+      bmr = 10*p.weight + 6.25*p.height - 5*p.age - 161;
+    } else {
+      bmr = 10*p.weight + 6.25*p.height - 5*p.age + 5;
+    }
+    var act = ACTIVITY.filter(function(a){return a.id===p.activity;})[0] || ACTIVITY[1];
+    var goal = GOALS.filter(function(g){return g.id===p.goal;})[0] || GOALS[1];
+    var tdee = bmr * act.mult;
+    var target = Math.round((tdee + goal.delta) / 10) * 10;
+    return Math.max(1200, target);
+  }
+  function macroTargets(target){
+    return {
+      protein: Math.round(target*0.30/4),
+      carbs: Math.round(target*0.40/4),
+      fat: Math.round(target*0.30/9)
+    };
+  }
+
+  var state = {
+    profile: loadProfile(),
+    log: loadLog(),
+    viewDate: todayKey(),
+    onb: { gender:null, age:"", height:"", weight:"", activity:null, goal:null, step:0 }
+  };
+
+  var sampleCap = null; // resolved async
+  var sampleLimits = null;
+  (async function initSample(){
+    try {
+      if(window.claude && window.claude.use){
+        sampleCap = await window.claude.use("sample");
+        if(sampleCap){
+          try { sampleLimits = await sampleCap.limits(); } catch(e){ sampleLimits = null; }
+        }
+      }
+    } catch(e){ sampleCap = null; }
+    render();
+  })();
+
+  var app = document.getElementById("app");
+
+  function render(){
+    if(!state.profile){ renderOnboarding(); }
+    else { renderDashboard(); }
+  }
+
+  /* ============ ONBOARDING ============ */
+  function renderOnboarding(){
+    var o = state.onb;
+    var steps = ["Про вас", "Активність", "Ціль", "Готово"];
+    var html = '<div class="onb-wrap">';
+    html += '<div class="onb-progress">';
+    for(var i=0;i<steps.length;i++){ html += '<i class="'+(i<=o.step?'done':'')+'"></i>'; }
+    html += '</div>';
+    html += '<div class="onb-step">';
+
+    if(o.step === 0){
+      html += '<h1>Розкажіть трохи про себе</h1><p class="sub">Це потрібно, щоб точно порахувати вашу денну норму калорій.</p>';
+      html += '<div class="field"><label>Стать</label><div class="seg">';
+      html += '<button type="button" class="'+(o.gender==="male"?"sel":"")+'" data-act="gender" data-val="male">Чоловіча</button>';
+      html += '<button type="button" class="'+(o.gender==="female"?"sel":"")+'" data-act="gender" data-val="female">Жіноча</button>';
+      html += '</div></div>';
+      html += '<div class="field"><label>Вік, років</label><input type="number" inputmode="numeric" id="f-age" value="'+esc(o.age)+'" placeholder="напр. 27"></div>';
+      html += '<div class="field"><label>Зріст, см</label><input type="number" inputmode="numeric" id="f-height" value="'+esc(o.height)+'" placeholder="напр. 178"></div>';
+      html += '<div class="field"><label>Вага, кг</label><input type="number" inputmode="decimal" id="f-weight" value="'+esc(o.weight)+'" placeholder="напр. 72"></div>';
+    } else if(o.step === 1){
+      html += '<h1>Який у вас рівень активності?</h1><p class="sub">Впливає на те, скільки калорій ваше тіло витрачає щодня.</p>';
+      html += '<div class="seg col">';
+      ACTIVITY.forEach(function(a){
+        html += '<button type="button" class="'+(o.activity===a.id?"sel":"")+'" data-act="activity" data-val="'+a.id+'"><span class="t">'+a.t+'</span><span class="d">'+a.d+'</span></button>';
+      });
+      html += '</div>';
+    } else if(o.step === 2){
+      html += '<h1>Яка ваша ціль?</h1><p class="sub">Визначить, чи потрібен дефіцит або надлишок калорій.</p>';
+      html += '<div class="seg col">';
+      GOALS.forEach(function(g){
+        html += '<button type="button" class="'+(o.goal===g.id?"sel":"")+'" data-act="goal" data-val="'+g.id+'"><span class="t">'+g.t+'</span><span class="d">'+g.d+'</span></button>';
+      });
+      html += '</div>';
+    } else if(o.step === 3){
+      var tmp = { gender:o.gender, age:Number(o.age), height:Number(o.height), weight:Number(o.weight), activity:o.activity, goal:o.goal };
+      var target = calcTarget(tmp);
+      var mt = macroTargets(target);
+      var goalT = GOALS.filter(function(g){return g.id===o.goal;})[0];
+      html += '<h1>Ваша денна норма готова</h1><p class="sub">Можна змінити пізніше в профілі.</p>';
+      html += '<div class="result-card"><div class="n">'+target+'</div><div class="l">ккал на день · '+ (goalT? goalT.t.toLowerCase() : '') +'</div>';
+      html += '<div class="result-macros">';
+      html += '<div><div class="v">'+mt.protein+' г</div><div class="k">білок</div></div>';
+      html += '<div><div class="v">'+mt.carbs+' г</div><div class="k">вуглеводи</div></div>';
+      html += '<div><div class="v">'+mt.fat+' г</div><div class="k">жир</div></div>';
+      html += '</div></div>';
+    }
+    html += '</div>';
+
+    html += '<div class="onb-nav">';
+    if(o.step > 0){ html += '<button class="btn-ghost" id="onb-back">Назад</button>'; }
+    var nextLabel = o.step===3 ? "Почати" : "Далі";
+    var canNext = onbCanProceed(o);
+    html += '<button class="btn-primary" id="onb-next" '+(canNext?"":"disabled")+'>'+nextLabel+'</button>';
+    html += '</div>';
+    html += '</div>';
+
+    app.innerHTML = html;
+
+    var ageEl = document.getElementById("f-age");
+    var heightEl = document.getElementById("f-height");
+    var weightEl = document.getElementById("f-weight");
+    if(ageEl) ageEl.addEventListener("input", function(){ o.age = this.value; syncNextBtn(); });
+    if(heightEl) heightEl.addEventListener("input", function(){ o.height = this.value; syncNextBtn(); });
+    if(weightEl) weightEl.addEventListener("input", function(){ o.weight = this.value; syncNextBtn(); });
+
+    app.querySelectorAll('[data-act]').forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var act = this.getAttribute("data-act");
+        var val = this.getAttribute("data-val");
+        o[act] = val;
+        renderOnboarding();
+      });
+    });
+    var backBtn = document.getElementById("onb-back");
+    if(backBtn) backBtn.addEventListener("click", function(){ o.step--; renderOnboarding(); });
+    var nextBtn = document.getElementById("onb-next");
+    if(nextBtn) nextBtn.addEventListener("click", function(){
+      if(o.step < 3){ o.step++; renderOnboarding(); }
+      else { finishOnboarding(); }
+    });
+
+    function syncNextBtn(){
+      var b = document.getElementById("onb-next");
+      if(b) b.disabled = !onbCanProceed(o);
+    }
+  }
+  function onbCanProceed(o){
+    if(o.step===0){ return !!o.gender && o.age>0 && o.height>0 && o.weight>0; }
+    if(o.step===1){ return !!o.activity; }
+    if(o.step===2){ return !!o.goal; }
+    return true;
+  }
+  function finishOnboarding(){
+    var o = state.onb;
+    state.profile = {
+      gender:o.gender, age:Number(o.age), height:Number(o.height), weight:Number(o.weight),
+      activity:o.activity, goal:o.goal
+    };
+    saveProfile(state.profile);
+    render();
+  }
+
+  /* ============ DASHBOARD ============ */
+  function getDays(){
+    var days = [];
+    for(var i=6;i>=0;i--){
+      var d = new Date();
+      d.setDate(d.getDate()-i);
+      days.push(d);
+    }
+    return days;
+  }
+  function entriesFor(key){ return state.log[key] || []; }
+  function sumField(entries, f){ return entries.reduce(function(s,e){ return s+(Number(e[f])||0); }, 0); }
+
+  function renderDashboard(){
+    var target = calcTarget(state.profile);
+    var mt = macroTargets(target);
+    var entries = entriesFor(state.viewDate);
+    var eaten = sumField(entries, "calories");
+    var remaining = clamp(target - eaten, target*-1, target);
+    var pct = clamp(eaten/target, 0, 1);
+
+    var prot = sumField(entries, "protein"), carbs = sumField(entries,"carbs"), fat = sumField(entries,"fat");
+
+    var html = '';
+    html += '<div class="topbar"><div class="wordmark">кал<span>орії</span></div>';
+    html += '<button class="icon-btn" id="btn-profile" aria-label="Профіль">'+ICON_USER+'</button></div>';
+
+    html += '<div class="day-strip">';
+    getDays().forEach(function(d){
+      var key = dateKey(d);
+      var active = key === state.viewDate;
+      html += '<div class="day-chip '+(active?"active":"")+'" data-day="'+key+'"><div class="dow">'+DOW[d.getDay()]+'</div><div class="num">'+d.getDate()+'</div></div>';
+    });
+    html += '</div>';
+
+    html += '<div class="section">';
+    html += '<div class="card budget-card">';
+    html += '<div class="budget-labels"><div class="eyebrow">Бюджет калорій</div>';
+    html += '<div class="row">';
+    html += '<div class="stat"><span class="n">'+eaten+'</span><span class="l">з\'їдено</span></div>';
+    html += '<div class="stat"><span class="n">'+target+'</span><span class="l">мета</span></div>';
+    html += '</div></div>';
+    html += ringSVG(pct, remaining);
+    html += '</div>';
+
+    html += '<div class="macro-grid">';
+    html += macroCard("Білок", prot, mt.protein, "var(--primary)");
+    html += macroCard("Вуглеводи", carbs, mt.carbs, "var(--carb)");
+    html += macroCard("Жир", fat, mt.fat, "var(--fat)");
+    html += '</div>';
+
+    html += '<div class="list-head"><h2>Прийоми їжі</h2><span class="count">'+entries.length+' зафіксовано</span></div>';
+    if(entries.length === 0){
+      html += '<div class="empty-state">Поки що нічого не додано.<br>Натисніть кнопку нижче, щоб відсканувати страву.</div>';
+    } else {
+      entries.slice().reverse().forEach(function(e){
+        html += '<div class="meal-row">';
+        html += '<div class="meal-bar"></div>';
+        html += '<div class="meal-info"><div class="name">'+esc(e.name)+'</div><div class="meta">'+esc(e.time||"")+' · Б '+Math.round(e.protein||0)+' г · В '+Math.round(e.carbs||0)+' г · Ж '+Math.round(e.fat||0)+' г</div></div>';
+        html += '<div class="meal-kcal">'+Math.round(e.calories)+'</div>';
+        html += '<button class="meal-del" data-del="'+e.id+'" aria-label="Видалити">'+ICON_TRASH+'</button>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    html += '<div class="fab-wrap"><button class="fab" id="btn-add">'+ICON_CAMERA+' Додати їжу</button></div>';
+
+    app.innerHTML = html;
+
+    document.getElementById("btn-profile").addEventListener("click", openProfileSheet);
+    document.getElementById("btn-add").addEventListener("click", openAddSheet);
+    app.querySelectorAll("[data-day]").forEach(function(el){
+      el.addEventListener("click", function(){ state.viewDate = this.getAttribute("data-day"); renderDashboard(); });
+    });
+    app.querySelectorAll("[data-del]").forEach(function(el){
+      el.addEventListener("click", function(){
+        var id = this.getAttribute("data-del");
+        state.log[state.viewDate] = entriesFor(state.viewDate).filter(function(e){ return e.id!==id; });
+        saveLog(state.log);
+        renderDashboard();
+      });
+    });
+  }
+
+  function macroCard(name, val, target, color){
+    var pct = clamp(val/Math.max(1,target),0,1)*100;
+    return '<div class="macro-card"><div class="name"><span class="dot" style="background:'+color+'"></span>'+name+'</div>'+
+      '<div class="val">'+Math.round(val)+' / '+target+' г</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div></div>';
+  }
+
+  function ringSVG(pct, remaining){
+    var r = 46, c = 2*Math.PI*r;
+    var dash = c*pct;
+    return '<div class="ring-wrap"><svg viewBox="0 0 118 118" width="118" height="118">'+
+      '<circle cx="59" cy="59" r="'+r+'" fill="none" stroke="var(--surface-alt)" stroke-width="10"/>'+
+      '<circle cx="59" cy="59" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" '+
+      'stroke-dasharray="'+dash+' '+c+'" transform="rotate(-90 59 59)"/>'+
+      '</svg><div class="mid"><span class="n">'+Math.max(0,Math.round(remaining))+'</span><span class="l">залишилось<br>ккал</span></div></div>';
+  }
+
+  /* ============ ADD MEAL SHEET ============ */
+  var overlay;
+  function ensureOverlay(){
+    if(overlay) return overlay;
+    overlay = document.createElement("div");
+    overlay.className = "overlay hidden";
+    overlay.addEventListener("click", function(e){ if(e.target===overlay) closeSheet(); });
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+  function openSheet(innerHtml){
+    var ov = ensureOverlay();
+    ov.innerHTML = '<div class="sheet"><div class="sheet-handle"></div>'+innerHtml+'</div>';
+    ov.classList.remove("hidden");
+  }
+  function closeSheet(){ if(overlay) overlay.classList.add("hidden"); }
+
+  function openAddSheet(){
+    var canScan = !!(sampleCap && sampleLimits && sampleLimits.images);
+    var html = '<h2>Додати їжу</h2><div class="sub">'+prettyDate(state.viewDate)+'</div>';
+    html += '<div class="scan-choice">';
+    if(canScan){
+      html += '<label id="lbl-camera"><span class="ic">'+ICON_CAMERA_SM+'</span><span>Сфотографувати страву<input type="file" accept="'+((sampleLimits.images.mediaTypes||["image/*"]).join(","))+'" capture="environment" id="file-camera"></span></label>';
+      html += '<label id="lbl-gallery"><span class="ic">'+ICON_IMG+'</span><span>Обрати фото з галереї<input type="file" accept="'+((sampleLimits.images.mediaTypes||["image/*"]).join(","))+'" id="file-gallery"></span></label>';
+    }
+    html += '<button type="button" id="btn-manual"><span class="ic">'+ICON_PENCIL+'</span><span>Ввести вручну</span></button>';
+    html += '</div>';
+    if(!canScan){
+      html += '<div class="sub" style="margin-top:14px">Сканування фото зараз недоступне в цьому перегляді — можна додати страву вручну.</div>';
+    }
+    openSheet(html);
+    var fc = document.getElementById("file-camera");
+    var fg = document.getElementById("file-gallery");
+    if(fc) fc.addEventListener("change", function(){ if(this.files[0]) handlePhoto(this.files[0]); });
+    if(fg) fg.addEventListener("change", function(){ if(this.files[0]) handlePhoto(this.files[0]); });
+    document.getElementById("btn-manual").addEventListener("click", openManualSheet);
+  }
+
+  function prettyDate(key){
+    var d = new Date(key+"T00:00:00");
+    var months = ["січня","лютого","березня","квітня","травня","червня","липня","серпня","вересня","жовтня","листопада","грудня"];
+    return d.getDate()+" "+months[d.getMonth()];
+  }
+
+  function openManualSheet(prefill){
+    prefill = prefill || {};
+    var html = '<h2>Додати вручну</h2><div class="sub">'+prettyDate(state.viewDate)+'</div>';
+    html += '<div class="field"><label>Назва страви</label><input type="text" id="m-name" value="'+esc(prefill.name||"")+'" placeholder="напр. Вівсянка з бананом"></div>';
+    html += '<div class="field"><label>Калорії, ккал</label><input type="number" inputmode="numeric" id="m-cal" value="'+esc(prefill.calories||"")+'"></div>';
+    html += '<div class="field"><label>Білок, г</label><input type="number" inputmode="numeric" id="m-p" value="'+esc(prefill.protein||"")+'"></div>';
+    html += '<div class="field"><label>Вуглеводи, г</label><input type="number" inputmode="numeric" id="m-c" value="'+esc(prefill.carbs||"")+'"></div>';
+    html += '<div class="field"><label>Жир, г</label><input type="number" inputmode="numeric" id="m-f" value="'+esc(prefill.fat||"")+'"></div>';
+    html += '<div class="sheet-actions"><button class="btn-ghost" id="m-cancel">Скасувати</button><button class="btn-primary" id="m-save">Зберегти</button></div>';
+    openSheet(html);
+    document.getElementById("m-cancel").addEventListener("click", closeSheet);
+    document.getElementById("m-save").addEventListener("click", function(){
+      var name = document.getElementById("m-name").value.trim();
+      var cal = Number(document.getElementById("m-cal").value);
+      if(!name || !cal){ return; }
+      addEntry({
+        name: name, calories: cal,
+        protein: Number(document.getElementById("m-p").value)||0,
+        carbs: Number(document.getElementById("m-c").value)||0,
+        fat: Number(document.getElementById("m-f").value)||0,
+        source: "manual"
+      });
+      closeSheet();
+      renderDashboard();
+    });
+  }
+
+  function addEntry(e){
+    e.id = uid();
+    e.time = e.time || new Date().toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"});
+    if(!state.log[state.viewDate]) state.log[state.viewDate] = [];
+    state.log[state.viewDate].push(e);
+    saveLog(state.log);
+  }
+
+  function handlePhoto(file){
+    var html = '<h2>Аналіз фото</h2><div class="scan-status"><div class="spinner"></div><div class="msg">Розпізнаємо страву на фото…</div></div>';
+    openSheet(html);
+
+    var prompt = "Ти - дієтолог-асистент застосунку для підрахунку калорій. На зображенні фото їжі. "+
+      "Визнач кожну окрему страву або продукт, який бачиш, і для кожного оціни калорійність та поживну цінність порції, яку бачиш на фото. "+
+      "Поверни ЛИШЕ JSON без жодного іншого тексту, у форматі: "+
+      '{"items":[{"name":"коротка назва українською","calories":число,"protein":число_грам,"carbs":число_грам,"fat":число_грам}]}. '+
+      "Якщо їжі на фото не видно, поверни {\"items\":[]}.";
+
+    sampleCap.json(prompt, { images: file, modelTier: "default", cache: false })
+      .then(function(data){
+        var items = (data && Array.isArray(data.items)) ? data.items : [];
+        items = items.filter(function(it){ return it && it.name && Number(it.calories) > 0; });
+        if(items.length === 0){
+          renderScanError("Не вдалося розпізнати їжу на фото. Спробуйте інше фото або додайте страву вручну.");
+          return;
+        }
+        renderScanResults(items);
+      })
+      .catch(function(err){
+        var msg = "Не вдалося проаналізувати фото. Спробуйте ще раз або додайте страву вручну.";
+        if(err && err.code === "not_granted"){ msg = "Аналіз фото не дозволено для цього перегляду."; }
+        renderScanError(msg);
+      });
+  }
+
+  function renderScanError(msg){
+    var html = '<h2>Аналіз фото</h2><div class="err-box">'+esc(msg)+'</div>';
+    html += '<div class="sheet-actions"><button class="btn-ghost" id="e-cancel">Закрити</button><button class="btn-primary" id="e-manual">Ввести вручну</button></div>';
+    openSheet(html);
+    document.getElementById("e-cancel").addEventListener("click", closeSheet);
+    document.getElementById("e-manual").addEventListener("click", openManualSheet);
+  }
+
+  function renderScanResults(items){
+    var html = '<h2>Знайдено на фото</h2><div class="sub">Позначте, що додати до '+prettyDate(state.viewDate)+'</div>';
+    html += '<div class="scan-results">';
+    items.forEach(function(it, idx){
+      html += '<div class="scan-item"><input type="checkbox" checked data-idx="'+idx+'">'+
+        '<div class="info"><div class="n">'+esc(it.name)+'</div><div class="m">Б '+Math.round(it.protein||0)+' г · В '+Math.round(it.carbs||0)+' г · Ж '+Math.round(it.fat||0)+' г</div></div>'+
+        '<div class="k">'+Math.round(it.calories)+'</div></div>';
+    });
+    html += '</div>';
+    html += '<div class="sheet-actions"><button class="btn-ghost" id="r-cancel">Скасувати</button><button class="btn-primary" id="r-save">Додати</button></div>';
+    openSheet(html);
+    document.getElementById("r-cancel").addEventListener("click", closeSheet);
+    document.getElementById("r-save").addEventListener("click", function(){
+      var checks = document.querySelectorAll(".scan-item input[type=checkbox]");
+      checks.forEach(function(cb){
+        if(cb.checked){
+          var it = items[Number(cb.getAttribute("data-idx"))];
+          addEntry({ name: it.name, calories: Number(it.calories)||0, protein: Number(it.protein)||0, carbs: Number(it.carbs)||0, fat: Number(it.fat)||0, source: "scan" });
+        }
+      });
+      saveLog(state.log);
+      closeSheet();
+      renderDashboard();
+    });
+  }
+
+  /* ============ PROFILE SHEET ============ */
+  function openProfileSheet(){
+    var p = state.profile;
+    var target = calcTarget(p);
+    var act = ACTIVITY.filter(function(a){return a.id===p.activity;})[0];
+    var goal = GOALS.filter(function(g){return g.id===p.goal;})[0];
+    var html = '<h2>Профіль</h2><div class="sub">Ваша денна норма — '+target+' ккал</div>';
+    html += '<div class="field"><label>Стать</label><div>'+(p.gender==="male"?"Чоловіча":"Жіноча")+'</div></div>';
+    html += '<div class="field"><label>Вік / зріст / вага</label><div>'+p.age+' років · '+p.height+' см · '+p.weight+' кг</div></div>';
+    html += '<div class="field"><label>Активність</label><div>'+(act?act.t:"")+'</div></div>';
+    html += '<div class="field"><label>Ціль</label><div>'+(goal?goal.t:"")+'</div></div>';
+    html += '<div class="sheet-actions"><button class="btn-ghost" id="p-edit">Редагувати</button><button class="btn-primary" id="p-close">Готово</button></div>';
+    html += '<div style="text-align:center;margin-top:16px"><button class="link-btn" id="p-reset">Скинути всі дані</button></div>';
+    openSheet(html);
+    document.getElementById("p-close").addEventListener("click", closeSheet);
+    document.getElementById("p-edit").addEventListener("click", function(){
+      closeSheet();
+      state.onb = { gender:p.gender, age:String(p.age), height:String(p.height), weight:String(p.weight), activity:p.activity, goal:p.goal, step:0 };
+      state.profile = null;
+      render();
+    });
+    document.getElementById("p-reset").addEventListener("click", function(){
+      if(confirm("Видалити профіль і весь журнал їжі? Цю дію не можна скасувати.")){
+        localStorage.removeItem(LS_PROFILE);
+        localStorage.removeItem(LS_LOG);
+        state.profile = null; state.log = {}; state.viewDate = todayKey();
+        state.onb = { gender:null, age:"", height:"", weight:"", activity:null, goal:null, step:0 };
+        closeSheet();
+        render();
+      }
+    });
+  }
+
+  /* ============ icons ============ */
+  var ICON_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c1.5-4 4.2-6 7.5-6s6 2 7.5 6"/></svg>';
+  var ICON_TRASH = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12a1 1 0 001 1h6a1 1 0 001-1l1-12"/></svg>';
+  var ICON_CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.4"/></svg>';
+  var ICON_CAMERA_SM = ICON_CAMERA.replace('stroke-width="2"','stroke-width="1.8" width="18" height="18"');
+  var ICON_IMG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M20 16l-5-5-4 4-2-2-5 5"/></svg>';
+  var ICON_PENCIL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20l1-4L15.5 5.5a2 2 0 012.8 0l.7.7a2 2 0 010 2.8L8.5 19.5 4 20z"/></svg>';
+
+  render();
+})();
+</script>
+</body>
+</html>
